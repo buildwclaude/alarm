@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.buildwclaude.alarm.R
 
@@ -58,7 +59,7 @@ object AlarmNotifications {
         return NotificationCompat.Builder(context, AlarmContract.CHANNEL_RINGING)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
-            .setContentText("Solve the riddle to stop the alarm")
+            .setContentText("Tap to solve the riddle and stop the alarm")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)
@@ -66,6 +67,20 @@ object AlarmNotifications {
             .setContentIntent(fullScreenPi)
             .setFullScreenIntent(fullScreenPi, true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Safety net: these let the alarm be stopped from the notification shade even
+            // if the full-screen riddle screen ever fails to appear on a given device.
+            .addAction(0, "Snooze", servicePendingIntent(context, AlarmContract.ACTION_SNOOZE, 101))
+            .addAction(0, "Dismiss", servicePendingIntent(context, AlarmContract.ACTION_DISMISS, 102))
             .build()
+    }
+
+    private fun servicePendingIntent(context: Context, action: String, requestCode: Int): PendingIntent {
+        val intent = Intent(context, AlarmService::class.java).apply { this.action = action }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(context, requestCode, intent, flags)
+        } else {
+            PendingIntent.getService(context, requestCode, intent, flags)
+        }
     }
 }

@@ -192,16 +192,25 @@ private fun RiddleScreen(onSolvedOrSkipped: () -> Unit) {
     }
     val showSkip = elapsed >= AlarmContract.SKIP_RIDDLE_AFTER_MS
 
-    // Pick a riddle once per firing.
+    // Pick a riddle once per firing. Always end up with a non-null riddle so the screen
+    // can never get stuck on a spinner with no way to answer.
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         if (riddle == null) {
-            val r = runCatching { RiddleRepository(context).pickNext() }.getOrNull()
-            if (r != null) { AlarmService.Active.riddle = r; riddle = r }
+            val r = runCatching { RiddleRepository(context).pickNext() }.getOrNull() ?: FALLBACK_RIDDLE
+            AlarmService.Active.riddle = r
+            riddle = r
         }
     }
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus(); keyboard?.show() }
+    // Focus the answer field + show the keyboard ONLY once the field actually exists.
+    // Requesting focus while the riddle is still loading crashes with an unattached
+    // FocusRequester, so this must be gated on `riddle != null` and guarded.
+    LaunchedEffect(riddle != null) {
+        if (riddle != null) {
+            runCatching { focusRequester.requestFocus(); keyboard?.show() }
+        }
+    }
     LaunchedEffect(wrongAttempts) {
         if (wrongAttempts > 0) {
             shake.snapTo(0f)
@@ -318,6 +327,15 @@ private fun ResolveScreen(onSnooze: () -> Unit, onDismiss: () -> Unit) {
         ) { Text("Snooze ($snoozeMin min)", fontSize = 20.sp) }
     }
 }
+
+/** Used if loading riddles.json ever fails, so the user always has something to answer. */
+private val FALLBACK_RIDDLE = Riddle(
+    id = 0,
+    question = "What has hands but cannot clap?",
+    answer = "clock",
+    acceptableAnswers = listOf("a clock", "clocks"),
+    difficulty = "easy",
+)
 
 /** False when the user has turned on "Remove animations" in accessibility settings. */
 private fun animationsEnabled(context: Context): Boolean = try {
