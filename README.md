@@ -68,5 +68,5 @@ Built in stages, each a single commit with a green build:
 - [x] **Step 2** — Room database + scheduling + reliable ringing
 - [x] **Step 3** — Time-of-day adaptive picker
 - [x] **Step 4** — Riddle-to-dismiss screen
-- [ ] **Step 5** — Blue/red/green flash sequence
+- [x] **Step 5** — Blue/red/green flash sequence
 - [ ] **Step 6** — Settings + polish

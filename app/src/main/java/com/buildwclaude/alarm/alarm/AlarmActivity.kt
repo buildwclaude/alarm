@@ -1,8 +1,10 @@
 package com.buildwclaude.alarm.alarm
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -30,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,16 +44,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.buildwclaude.alarm.data.Riddle
 import com.buildwclaude.alarm.data.RiddleRepository
+import com.buildwclaude.alarm.data.SettingsStore
 import com.buildwclaude.alarm.ui.theme.RiddleAlarmTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
@@ -78,8 +85,19 @@ class AlarmActivity : ComponentActivity() {
                     onSolved = { AlarmService.sendAction(this, AlarmContract.ACTION_SILENCE) },
                     onSnooze = { resolveWith(AlarmContract.ACTION_SNOOZE) },
                     onDismiss = { resolveWith(AlarmContract.ACTION_DISMISS) },
+                    setBrightnessMax = ::setBrightnessMax,
                 )
             }
+        }
+    }
+
+    /** Force full brightness during the flash, then hand control back to the system. */
+    private fun setBrightnessMax(on: Boolean) {
+        runCatching {
+            val lp = window.attributes
+            lp.screenBrightness =
+                if (on) 1f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            window.attributes = lp
         }
     }
 
@@ -113,18 +131,38 @@ class AlarmActivity : ComponentActivity() {
     }
 }
 
-private enum class Phase { RIDDLE, RESOLVE }
+private enum class Phase { RIDDLE, FLASH, RESOLVE }
 
 @Composable
-private fun AlarmFlow(onSolved: () -> Unit, onSnooze: () -> Unit, onDismiss: () -> Unit) {
+private fun AlarmFlow(
+    onSolved: () -> Unit,
+    onSnooze: () -> Unit,
+    onDismiss: () -> Unit,
+    setBrightnessMax: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    val settings = remember { SettingsStore(context) }
+    val flashEnabled by remember(settings) { settings.settings.map { it.flashEnabled } }
+        .collectAsStateWithLifecycle(initialValue = true)
+    // Respect the system "Remove animations" accessibility setting.
+    val animationsOn = remember { animationsEnabled(context) }
+    val shouldFlash = flashEnabled && animationsOn
+
     var phase by remember { mutableStateOf(Phase.RIDDLE) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Crossfade(targetState = phase, animationSpec = tween(400), label = "phase") { p ->
             when (p) {
                 Phase.RIDDLE -> RiddleScreen(onSolvedOrSkipped = {
                     onSolved()
-                    phase = Phase.RESOLVE
+                    phase = if (shouldFlash) Phase.FLASH else Phase.RESOLVE
                 })
+                Phase.FLASH -> {
+                    DisposableEffect(Unit) {
+                        setBrightnessMax(true)
+                        onDispose { setBrightnessMax(false) }
+                    }
+                    FlashScreen(onFinished = { phase = Phase.RESOLVE })
+                }
                 Phase.RESOLVE -> ResolveScreen(onSnooze = onSnooze, onDismiss = onDismiss)
             }
         }
@@ -155,7 +193,7 @@ private fun RiddleScreen(onSolvedOrSkipped: () -> Unit) {
     val showSkip = elapsed >= AlarmContract.SKIP_RIDDLE_AFTER_MS
 
     // Pick a riddle once per firing.
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
         if (riddle == null) {
             val r = runCatching { RiddleRepository(context).pickNext() }.getOrNull()
@@ -279,4 +317,15 @@ private fun ResolveScreen(onSnooze: () -> Unit, onDismiss: () -> Unit) {
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
         ) { Text("Snooze ($snoozeMin min)", fontSize = 20.sp) }
     }
+}
+
+/** False when the user has turned on "Remove animations" in accessibility settings. */
+private fun animationsEnabled(context: Context): Boolean = try {
+    Settings.Global.getFloat(
+        context.contentResolver,
+        Settings.Global.ANIMATOR_DURATION_SCALE,
+        1f,
+    ) != 0f
+} catch (t: Throwable) {
+    true
 }
