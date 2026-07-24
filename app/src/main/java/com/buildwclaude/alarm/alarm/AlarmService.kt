@@ -20,10 +20,12 @@ import androidx.core.app.ServiceCompat
 import com.buildwclaude.alarm.data.AlarmEntity
 import com.buildwclaude.alarm.data.AlarmRepository
 import com.buildwclaude.alarm.data.Riddle
+import com.buildwclaude.alarm.data.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -42,6 +44,7 @@ class AlarmService : Service() {
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private val timeoutHandler = Handler(Looper.getMainLooper())
+    private val rampHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var currentAlarmId: Int = -1
@@ -90,10 +93,13 @@ class AlarmService : Service() {
             }
             snoozeMinutes = alarm?.snoozeMinutes ?: 5
             Active.snoozeMinutes = snoozeMinutes
+            val gradual = runCatching {
+                SettingsStore(applicationContext).settings.first().gradualVolume
+            }.getOrDefault(true)
             withMain {
                 goForeground(id, alarm?.label ?: "Alarm")
                 if (!soundStarted) {
-                    startSoundAndVibration(alarm)
+                    startSoundAndVibration(alarm, gradual)
                     acquireWakeLock()
                     armTimeout()
                     soundStarted = true
@@ -118,7 +124,7 @@ class AlarmService : Service() {
         }
     }
 
-    private fun startSoundAndVibration(alarm: AlarmEntity?) {
+    private fun startSoundAndVibration(alarm: AlarmEntity?, gradual: Boolean) {
         val key = alarm?.soundKey ?: AlarmSound.DEFAULT_KEY
         try {
             mediaPlayer?.release()
@@ -137,13 +143,32 @@ class AlarmService : Service() {
                     Log.e(TAG, "MediaPlayer error what=$what extra=$extra"); true
                 }
                 prepare()
+                if (gradual) setVolume(0.1f, 0.1f)
                 start()
             }
+            if (gradual) mediaPlayer?.let { rampVolumeUp(it) }
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to start alarm sound", t)
         }
 
         if (alarm?.vibrate != false) startVibration()
+    }
+
+    /** Fade playback gain from ~10% to full over roughly six seconds. */
+    private fun rampVolumeUp(mp: MediaPlayer) {
+        val steps = 20
+        val stepMs = 300L
+        rampHandler.removeCallbacksAndMessages(null)
+        val runnable = object : Runnable {
+            var i = 0
+            override fun run() {
+                i++
+                val v = (0.1f + 0.9f * (i / steps.toFloat())).coerceAtMost(1f)
+                runCatching { mp.setVolume(v, v) }
+                if (i < steps) rampHandler.postDelayed(this, stepMs)
+            }
+        }
+        rampHandler.postDelayed(runnable, stepMs)
     }
 
     private fun startVibration() {
@@ -245,6 +270,7 @@ class AlarmService : Service() {
     }
 
     private fun stopSound() {
+        rampHandler.removeCallbacksAndMessages(null)
         runCatching { mediaPlayer?.stop(); mediaPlayer?.release() }
         mediaPlayer = null
         runCatching { vibrator?.cancel() }

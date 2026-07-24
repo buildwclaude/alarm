@@ -9,6 +9,7 @@ import com.buildwclaude.alarm.data.AlarmRepository
 import com.buildwclaude.alarm.data.SettingsStore
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,12 @@ class AlarmViewModel(app: Application) : AndroidViewModel(app) {
         repo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     suspend fun load(id: Int): AlarmEntity? = repo.getById(id)
+
+    /** A blank alarm pre-filled with the user's default vibrate/snooze settings. */
+    suspend fun newAlarmDefaults(): AlarmEntity {
+        val s = settingsStore.settings.first()
+        return AlarmEntity(vibrate = s.vibrateDefault, snoozeMinutes = s.defaultSnoozeMinutes)
+    }
 
     fun save(alarm: AlarmEntity) {
         viewModelScope.launch {

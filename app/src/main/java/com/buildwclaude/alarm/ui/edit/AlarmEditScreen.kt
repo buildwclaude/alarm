@@ -58,7 +58,11 @@ fun AlarmEditScreen(
 ) {
     var initial by remember { mutableStateOf<AlarmEntity?>(null) }
     LaunchedEffect(alarmId) {
-        initial = if (alarmId == null || alarmId < 0) AlarmEntity() else (viewModel.load(alarmId) ?: AlarmEntity())
+        initial = if (alarmId == null || alarmId < 0) {
+            viewModel.newAlarmDefaults()
+        } else {
+            viewModel.load(alarmId) ?: viewModel.newAlarmDefaults()
+        }
     }
     val loaded = initial
     if (loaded == null) {
