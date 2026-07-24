@@ -65,8 +65,8 @@ The current tone is a simple rising two-tone chime generated as public-domain au
 Built in stages, each a single commit with a green build:
 
 - [x] **Step 1** — Project skeleton + CI producing an installable APK
-- [ ] **Step 2** — Room database + scheduling + reliable ringing
-- [ ] **Step 3** — Time-of-day adaptive picker
+- [x] **Step 2** — Room database + scheduling + reliable ringing
+- [x] **Step 3** — Time-of-day adaptive picker
 - [ ] **Step 4** — Riddle-to-dismiss screen
 - [ ] **Step 5** — Blue/red/green flash sequence
 - [ ] **Step 6** — Settings + polish

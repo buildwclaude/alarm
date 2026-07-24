@@ -2,6 +2,7 @@ package com.buildwclaude.alarm.ui.edit
 
 import com.buildwclaude.alarm.alarm.AlarmTime
 import com.buildwclaude.alarm.data.AlarmEntity
+import com.buildwclaude.alarm.ui.band.TimeBand
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -36,12 +37,14 @@ object NextAlarmText {
             else -> dayName(trigger.toLocalDate())
         }
 
+        val phrase = TimeBand.phraseForMinutes(hour * 60 + minute)
+
         val inPart = when {
             h == 0L -> "in $m min"
             m == 0L -> "in $h hr"
             else -> "in $h hr $m min"
         }
-        return "$dayWord · $inPart"
+        return "$dayWord $phrase · $inPart"
     }
 
     private fun dayName(date: LocalDate): String = date.dayOfWeek.name
