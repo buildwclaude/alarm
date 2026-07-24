@@ -44,6 +44,8 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|screenLayout|smallestScreenSize"
             android:showOnLockScreen="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true"

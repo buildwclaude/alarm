@@ -9,6 +9,11 @@ object AlarmContract {
     const val ACTION_FIRE = "com.buildwclaude.alarm.action.FIRE"
     const val ACTION_DISMISS = "com.buildwclaude.alarm.action.DISMISS"
     const val ACTION_SNOOZE = "com.buildwclaude.alarm.action.SNOOZE"
+    const val ACTION_SILENCE = "com.buildwclaude.alarm.action.SILENCE"   // riddle solved: hush, keep alive
+    const val ACTION_RELAUNCH = "com.buildwclaude.alarm.action.RELAUNCH" // re-show the alarm screen
+
+    // How long before the "Skip riddle" escape hatch appears.
+    const val SKIP_RIDDLE_AFTER_MS = 3 * 60 * 1000L
 
     // Extras
     const val EXTRA_ALARM_ID = "alarm_id"
