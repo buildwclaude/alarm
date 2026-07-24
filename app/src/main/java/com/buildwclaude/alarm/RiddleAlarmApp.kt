@@ -1,9 +1,17 @@
 package com.buildwclaude.alarm
 
 import android.app.Application
+import android.util.Log
+import com.buildwclaude.alarm.alarm.AlarmNotifications
 
 /**
- * Application subclass. Kept intentionally light for now; later steps will use it to
- * create notification channels and initialise the database/scheduler on process start.
+ * Creates the notification channels on process start. Kept defensive so a failure here
+ * can never stop the app from launching.
  */
-class RiddleAlarmApp : Application()
+class RiddleAlarmApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        runCatching { AlarmNotifications.createChannels(this) }
+            .onFailure { Log.e("RiddleAlarmApp", "Failed to create notification channels", it) }
+    }
+}
