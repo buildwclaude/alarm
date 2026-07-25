@@ -2,7 +2,7 @@ package com.buildwclaude.alarm.ui.edit
 
 import com.buildwclaude.alarm.alarm.AlarmTime
 import com.buildwclaude.alarm.data.AlarmEntity
-import com.buildwclaude.alarm.ui.band.TimeBand
+import com.buildwclaude.alarm.ui.TimeText
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -32,12 +32,12 @@ object NextAlarmText {
         val m = totalMinutes % 60
 
         val dayWord = when (trigger.toLocalDate()) {
-            now.toLocalDate() -> "Today"
-            now.toLocalDate().plusDays(1) -> "Tomorrow"
+            now.toLocalDate() -> "today"
+            now.toLocalDate().plusDays(1) -> "tomorrow"
             else -> dayName(trigger.toLocalDate())
         }
 
-        val phrase = TimeBand.phraseForMinutes(hour * 60 + minute)
+        val timeStr = "${TimeText.hourMinute(hour, minute)} ${TimeText.amPm(hour)}"
 
         val inPart = when {
             totalMinutes == 0L -> "in under a minute"
@@ -45,7 +45,8 @@ object NextAlarmText {
             m == 0L -> "in $h hr"
             else -> "in $h hr $m min"
         }
-        return "$dayWord $phrase · $inPart"
+        // e.g. "Rings today at 10:48 AM · in 1 min"
+        return "Rings $dayWord at $timeStr · $inPart"
     }
 
     private fun dayName(date: LocalDate): String = date.dayOfWeek.name
