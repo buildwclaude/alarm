@@ -10,6 +10,7 @@ import android.util.Log
 import com.buildwclaude.alarm.MainActivity
 import com.buildwclaude.alarm.data.AlarmEntity
 import com.buildwclaude.alarm.data.AlarmRepository
+import java.time.LocalDateTime
 
 /**
  * Schedules and cancels alarms with [AlarmManager.setAlarmClock] — the most reliable
@@ -40,6 +41,18 @@ class AlarmScheduler(private val context: Context) {
     fun scheduleSnooze(alarmId: Int, triggerAt: Long, autoSnoozeCount: Int) {
         scheduleAt(alarmId, triggerAt, isSnooze = true, autoSnoozeCount = autoSnoozeCount)
         Log.i(TAG, "Snooze scheduled for alarm $alarmId at $triggerAt")
+    }
+
+    /**
+     * Re-arm the next occurrence of a repeating alarm right after it has fired. Uses a base
+     * time one minute in the future so we can never accidentally reschedule (and instantly
+     * re-fire) the occurrence that just went off.
+     */
+    fun scheduleNextAfterFire(alarm: AlarmEntity) {
+        if (!alarm.enabled || alarm.repeatMask == 0) return
+        val triggerAt = AlarmTime.nextTrigger(alarm, from = LocalDateTime.now().plusMinutes(1))
+        scheduleAt(alarm.id, triggerAt, isSnooze = false, autoSnoozeCount = 0)
+        Log.i(TAG, "Re-armed repeating alarm ${alarm.id} for $triggerAt")
     }
 
     private fun scheduleAt(alarmId: Int, triggerAt: Long, isSnooze: Boolean, autoSnoozeCount: Int) {

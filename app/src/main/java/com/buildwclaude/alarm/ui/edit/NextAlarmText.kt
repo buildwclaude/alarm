@@ -40,6 +40,7 @@ object NextAlarmText {
         val phrase = TimeBand.phraseForMinutes(hour * 60 + minute)
 
         val inPart = when {
+            totalMinutes == 0L -> "in under a minute"
             h == 0L -> "in $m min"
             m == 0L -> "in $h hr"
             else -> "in $h hr $m min"

@@ -71,10 +71,11 @@ fun SetupBanners(viewModel: AlarmViewModel) {
             SetupCard(
                 icon = Icons.Filled.BatteryAlert,
                 title = "Keep alarms alive on Samsung",
-                body = "One UI can close background apps and silence alarms. Open this app's " +
-                    "settings, go to Battery, and choose \"Unrestricted\" so alarms always ring.",
-                actionLabel = "Open app settings",
-                onAction = { Permissions.openBatterySettings(context) },
+                body = "One UI can close background apps and silence alarms. Tap Allow to let " +
+                    "this app run in the background so alarms always ring. (For extra safety, " +
+                    "also set it to \"Unrestricted\" under Settings › Battery.)",
+                actionLabel = "Allow",
+                onAction = { Permissions.requestIgnoreBatteryOptimizations(context) },
                 onDismiss = { scope.launch { viewModel.settingsStore.setBatteryCardDismissed(true) } },
             )
             Spacer(Modifier.height(12.dp))

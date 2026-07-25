@@ -71,6 +71,7 @@ class AlarmService : Service() {
             ?: RingState.id(this)
         autoSnoozeCount = intent?.getIntExtra(AlarmContract.EXTRA_AUTO_SNOOZE_COUNT, -1)
             ?.takeIf { it != -1 } ?: RingState.autoSnoozeCount(this)
+        val isSnooze = intent?.getBooleanExtra(AlarmContract.EXTRA_IS_SNOOZE, false) ?: false
         currentAlarmId = id
 
         // Must call startForeground quickly; placeholder label first, refined after DB read.
@@ -93,6 +94,20 @@ class AlarmService : Service() {
             }
             snoozeMinutes = alarm?.snoozeMinutes ?: 5
             Active.snoozeMinutes = snoozeMinutes
+
+            // Bookkeeping that used to live (fragilely) in the receiver: a normal firing
+            // re-arms the next repeat occurrence and disables a one-off alarm.
+            if (!isSnooze && alarm != null) {
+                runCatching {
+                    val scheduler = AlarmScheduler(applicationContext)
+                    if (alarm.repeatMask != 0) {
+                        scheduler.scheduleNextAfterFire(alarm)
+                    } else {
+                        AlarmRepository.get(applicationContext).setEnabled(id, false)
+                    }
+                }.onFailure { Log.e(TAG, "Post-fire bookkeeping failed for $id", it) }
+            }
+
             val gradual = runCatching {
                 SettingsStore(applicationContext).settings.first().gradualVolume
             }.getOrDefault(true)

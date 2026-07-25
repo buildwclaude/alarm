@@ -1,5 +1,6 @@
 package com.buildwclaude.alarm.alarm
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
@@ -32,6 +33,19 @@ object Permissions {
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         return pm.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    /** One-tap system dialog to exempt the app from battery optimisation. */
+    @SuppressLint("BatteryLife")
+    fun requestIgnoreBatteryOptimizations(context: Context) {
+        if (isIgnoringBatteryOptimizations(context)) {
+            openBatterySettings(context)
+            return
+        }
+        safeStart(context, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
     }
 
     /** Deep-links to this app's battery page so the user can pick "Unrestricted" (One UI). */

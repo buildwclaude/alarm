@@ -104,6 +104,19 @@ private fun EditContent(alarm: AlarmEntity, viewModel: AlarmViewModel, onDone: (
         repeatMask = repeatMask, vibrate = vibrate, snoozeMinutes = snooze, enabled = true,
     )
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun saveAndConfirm() {
+        viewModel.save(draft())
+        val whenText = NextAlarmText.describe(hour24, minute, repeatMask)
+        val exact = if (com.buildwclaude.alarm.alarm.Permissions.canScheduleExactAlarms(context)) {
+            ""
+        } else {
+            "  ⚠ Allow exact alarms so it can ring."
+        }
+        android.widget.Toast.makeText(context, "Alarm set · $whenText$exact", android.widget.Toast.LENGTH_LONG).show()
+        onDone()
+    }
+
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(c0, c1, c2)))) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
 
@@ -219,7 +232,7 @@ private fun EditContent(alarm: AlarmEntity, viewModel: AlarmViewModel, onDone: (
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    Button(onClick = { viewModel.save(draft()); onDone() }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { saveAndConfirm() }, modifier = Modifier.fillMaxWidth()) {
                         Text("Save")
                     }
                     Spacer(Modifier.height(24.dp))
